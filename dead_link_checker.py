@@ -25,12 +25,14 @@ def check(url: str, from_url: str):
 
     checked[url] = 0
     text = ''
+    parent = url
     try:
         res = requests.get(url)
         checked[url] = res.status_code
         logger.write(res.headers['content-type'] + '\t' + str(res.status_code) + '\t' + url+ '\t' + from_url)
         logger.flush()
         text = res.text
+        parent = res.url
     except:
         logger.write('ERROR' + '\t' + 'ERROR' + '\t' + url+ '\t' + from_url)
         logger.flush()
@@ -46,7 +48,7 @@ def check(url: str, from_url: str):
             continue
         elif src.startswith('#'):
             continue
-        src = urljoin(url, src)
+        src = urljoin(parent, src)
         check(src, url)
 
     for link in soup.find_all('a'):
@@ -55,7 +57,7 @@ def check(url: str, from_url: str):
             continue
         elif child_url.startswith('#'):
             continue
-        child_url = urljoin(url, child_url)
+        child_url = urljoin(parent, child_url)
         check(child_url, url)
 
 parser = argparse.ArgumentParser()
