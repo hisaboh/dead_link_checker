@@ -1,0 +1,9 @@
+services:
+  app:
+    build: .
+    volumes:
+      - ./:/usr/src/app
+    working_dir: /usr/src/app
+    # command: python dead_link_checker.py
+    command: /bin/bash
+    tty: true
