@@ -5,6 +5,7 @@ import re
 from urllib.parse import urljoin
 import sys
 import os
+import cssutils
 
 class Logger:
     def __init__(self, filename: str):
@@ -27,13 +28,15 @@ def check(target_url: str, from_url: str, tag: str):
 
     checked[url] = 0
     text = ''
+    content_type = ''
     parent = url
     logger.write(url+ '\t' + from_url + '\t' + tag + '\t')
     logger.flush()
     try:
         res = requests.get(url)
         checked[url] = res.status_code
-        logger.write(res.headers['content-type'] + '\t' + str(res.status_code))
+        content_type = res.headers['content-type'].lower()
+        logger.write(content_type + '\t' + str(res.status_code))
         text = res.text
         parent = res.url
     except KeyboardInterrupt:
@@ -43,8 +46,20 @@ def check(target_url: str, from_url: str, tag: str):
     logger.write('\n')
     logger.flush()
 
+    # 外部サイトはこれ以上チェックしない
     if url.startswith(base) == False:
         return
+
+    if content_type.startswith('text/css'):
+        css = cssutils.parseString(text)
+        for rule in css:
+            if rule.type == rule.STYLE_RULE:
+                for prop in [p for p in rule.style if p.name == 'background-image']:
+                    for value in cssutils.css.PropertyValue(prop.value):
+                        if value.type == value.URI:
+                            if value.uri.startswith("data:") == False:
+                                src = urljoin(parent, value.uri)
+                                check(src, url, 'css background-image')
 
     soup = BeautifulSoup(text, 'html.parser')
 
@@ -87,7 +102,7 @@ def check(target_url: str, from_url: str, tag: str):
 parser = argparse.ArgumentParser()
 parser.add_argument("url", help="url the url you want to check")
 args = parser.parse_args()
-os.makedirs("out")
+os.makedirs("out", exist_ok=True)
 logger = Logger("out/out.tsv")
 logger.write('URL\tFROM URL\tTAG\tCONTENT-TYPE\tSTATUS\n')
 
