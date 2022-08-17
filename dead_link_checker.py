@@ -50,6 +50,9 @@ def check(target_url: str, from_url: str, tag: str):
     if url.startswith(base) == False:
         return
 
+    if content_type.startswith("application"):
+        return
+
     if content_type.startswith('text/css'):
         css = cssutils.parseString(text)
         for rule in css:
