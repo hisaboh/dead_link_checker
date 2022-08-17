@@ -4,6 +4,7 @@ import argparse
 import re
 from urllib.parse import urljoin
 import sys
+import os
 
 class Logger:
     def __init__(self, filename: str):
@@ -19,7 +20,7 @@ class Logger:
         self.file.flush()
 
 
-def check(target_url: str, from_url: str):
+def check(target_url: str, from_url: str, tag: str):
     url = ''.join(target_url.splitlines())
     if url in checked:
         return
@@ -27,7 +28,7 @@ def check(target_url: str, from_url: str):
     checked[url] = 0
     text = ''
     parent = url
-    logger.write(url+ '\t' + from_url + '\t')
+    logger.write(url+ '\t' + from_url + '\t' + tag + '\t')
     logger.flush()
     try:
         res = requests.get(url)
@@ -35,6 +36,8 @@ def check(target_url: str, from_url: str):
         logger.write(res.headers['content-type'] + '\t' + str(res.status_code))
         text = res.text
         parent = res.url
+    except KeyboardInterrupt:
+        raise
     except:
         logger.write('ERROR' + '\t' + 'ERROR')
     logger.write('\n')
@@ -45,6 +48,24 @@ def check(target_url: str, from_url: str):
 
     soup = BeautifulSoup(text, 'html.parser')
 
+    for script in soup.find_all('script'):
+        src = script.get('src')
+        if src is None:
+            continue
+        elif src.startswith('#'):
+            continue
+        src = urljoin(parent, src)
+        check(src, url, '<script>')
+
+    for link in soup.find_all('link'):
+        href = link.get('href')
+        if href is None:
+            continue
+        elif href.startswith('#'):
+            continue
+        href = urljoin(parent, href)
+        check(href, url, '<link>')
+
     for img in soup.find_all('img'):
         src = img.get('src')
         if src is None:
@@ -52,7 +73,7 @@ def check(target_url: str, from_url: str):
         elif src.startswith('#'):
             continue
         src = urljoin(parent, src)
-        check(src, url)
+        check(src, url, '<img>')
 
     for link in soup.find_all('a'):
         child_url = link.get('href')
@@ -61,14 +82,15 @@ def check(target_url: str, from_url: str):
         elif child_url.startswith('#'):
             continue
         child_url = urljoin(parent, child_url)
-        check(child_url, url)
+        check(child_url, url, '<a>')
 
 parser = argparse.ArgumentParser()
 parser.add_argument("url", help="url the url you want to check")
 args = parser.parse_args()
-logger = Logger("out.tsv")
-logger.write('URL\tFROM URL\tCONTENT-TYPE\tSTATUS\n')
+os.makedirs("out")
+logger = Logger("out/out.tsv")
+logger.write('URL\tFROM URL\tTAG\tCONTENT-TYPE\tSTATUS\n')
 
 checked = {}
 base = args.url
-check(base, 'NONE')
+check(base, 'NONE', 'NONE')
