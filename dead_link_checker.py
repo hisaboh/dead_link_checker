@@ -33,7 +33,7 @@ def check(target_url: str, from_url: str, tag: str):
     logger.write(url+ '\t' + from_url + '\t' + tag + '\t')
     logger.flush()
     try:
-        res = requests.get(url)
+        res = requests.get(url, timeout=(5.0, 15.0))
         checked[url] = res.status_code
         content_type = res.headers['content-type'].lower()
         logger.write(content_type + '\t' + str(res.status_code))
